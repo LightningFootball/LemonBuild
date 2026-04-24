@@ -7,6 +7,7 @@ struct CMakeBuilder {
     let buildDir: URL
     let installDir: URL
     let extraConfigureArgs: [String]
+    let extraEnv: [String: String]
     let generator: String
 
     init(
@@ -15,6 +16,7 @@ struct CMakeBuilder {
         buildDir: URL,
         installDir: URL,
         extraConfigureArgs: [String] = [],
+        extraEnv: [String: String] = [:],
         generator: String = "Ninja"
     ) {
         self.toolchain = toolchain
@@ -22,6 +24,7 @@ struct CMakeBuilder {
         self.buildDir = buildDir
         self.installDir = installDir
         self.extraConfigureArgs = extraConfigureArgs
+        self.extraEnv = extraEnv
         self.generator = generator
     }
 
@@ -39,15 +42,15 @@ struct CMakeBuilder {
             "-DBUILD_SHARED_LIBS=OFF"
         ]
         args.append(contentsOf: extraConfigureArgs)
-        try Shell.run("cmake", args: args)
+        try Shell.run("cmake", args: args, env: extraEnv)
     }
 
     func build() throws {
-        try Shell.run("cmake", "--build", buildDir.path)
+        try Shell.run("cmake", args: ["--build", buildDir.path], env: extraEnv)
     }
 
     func install() throws {
-        try Shell.run("cmake", "--install", buildDir.path)
+        try Shell.run("cmake", args: ["--install", buildDir.path], env: extraEnv)
     }
 
     private func writeToolchainFile() throws -> URL {

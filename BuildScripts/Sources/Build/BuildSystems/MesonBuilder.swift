@@ -1,27 +1,28 @@
 import Foundation
 
 /// Orchestrates a meson + ninja build for a single slice.
-///
-/// Stage 1: structure only. Stage 2+ fills in concrete `setup` flags per library.
 struct MesonBuilder {
     let toolchain: Toolchain
     let sourceDir: URL
     let buildDir: URL
     let installDir: URL
     let extraSetupArgs: [String]
+    let extraEnv: [String: String]
 
     init(
         toolchain: Toolchain,
         sourceDir: URL,
         buildDir: URL,
         installDir: URL,
-        extraSetupArgs: [String] = []
+        extraSetupArgs: [String] = [],
+        extraEnv: [String: String] = [:]
     ) {
         self.toolchain = toolchain
         self.sourceDir = sourceDir
         self.buildDir = buildDir
         self.installDir = installDir
         self.extraSetupArgs = extraSetupArgs
+        self.extraEnv = extraEnv
     }
 
     func configure() throws {
@@ -37,15 +38,15 @@ struct MesonBuilder {
             "--libdir", "lib"
         ]
         args.append(contentsOf: extraSetupArgs)
-        try Shell.run("meson", args: args, currentDirectory: sourceDir)
+        try Shell.run("meson", args: args, env: extraEnv, currentDirectory: sourceDir)
     }
 
     func build() throws {
-        try Shell.run("meson", "compile", "-C", buildDir.path)
+        try Shell.run("meson", args: ["compile", "-C", buildDir.path], env: extraEnv)
     }
 
     func install() throws {
-        try Shell.run("meson", "install", "-C", buildDir.path)
+        try Shell.run("meson", args: ["install", "-C", buildDir.path], env: extraEnv)
     }
 
     private func writeCrossFile() throws -> URL {

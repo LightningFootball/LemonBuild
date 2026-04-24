@@ -25,6 +25,39 @@ struct LibrarySpec {
     }
 }
 
+/// Everything a library's `buildSlice` needs to produce one slice.
+struct BuildContext {
+    let toolchain: Toolchain
+    let sourceDir: URL
+    let buildDir: URL
+    let installDir: URL
+    /// Install-prefix directories of already-built dependencies for this slice,
+    /// keyed by lowercased dependency name.
+    let dependencyInstallDirs: [String: URL]
+
+    /// `PKG_CONFIG_PATH` pointing to all dep pkg-config dirs, colon-joined.
+    var pkgConfigPath: String {
+        dependencyInstallDirs.values
+            .map { $0.appendingPathComponent("lib/pkgconfig").path }
+            .joined(separator: ":")
+    }
+
+    /// `PKG_CONFIG_LIBDIR` is like `PKG_CONFIG_PATH` but *replaces* the default
+    /// system paths — crucial for cross-compilation so native deps never leak in.
+    var pkgConfigLibdir: String { pkgConfigPath }
+
+    /// Env vars every builder should export before invoking meson/cmake/configure
+    /// so cross builds never resolve host-provided libraries (brew's `bzip2`,
+    /// system `iconv`, …). For libs with no declared deps, this clears
+    /// PKG_CONFIG_LIBDIR to the empty string.
+    var pkgConfigEnv: [String: String] {
+        [
+            "PKG_CONFIG_PATH": pkgConfigPath,
+            "PKG_CONFIG_LIBDIR": pkgConfigLibdir
+        ]
+    }
+}
+
 /// Result of installing a single slice. The build driver picks these up and
 /// feeds them to the xcframework assembler.
 struct InstallArtifact {
@@ -37,14 +70,18 @@ struct InstallArtifact {
 /// Each library supplies one of these to drive its own per-slice install.
 protocol LibraryBuilder {
     var spec: LibrarySpec { get }
-    /// Install the library for one slice and return the artifact paths.
-    func buildSlice(toolchain: Toolchain, sourceDir: URL, workspace: URL) throws -> InstallArtifact
+    func buildSlice(context: BuildContext) throws -> InstallArtifact
 }
 
 /// Central registry of everything the CLI knows how to build.
 enum LibraryRegistry {
     static let builders: [any LibraryBuilder] = [
-        Dav1dBuilder()
+        Dav1dBuilder(),
+        FreeTypeBuilder(),
+        FribidiBuilder(),
+        HarfbuzzBuilder(),
+        UchardetBuilder(),
+        LibassBuilder()
     ]
 
     static var libraries: [LibrarySpec] { builders.map(\.spec) }
