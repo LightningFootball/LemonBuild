@@ -81,7 +81,10 @@ enum LibraryRegistry {
         FribidiBuilder(),
         HarfbuzzBuilder(),
         UchardetBuilder(),
-        LibassBuilder()
+        LibassBuilder(),
+        MoltenVKBuilder(),
+        ShadercBuilder(),
+        LibplaceboBuilder()
     ]
 
     static var libraries: [LibrarySpec] { builders.map(\.spec) }

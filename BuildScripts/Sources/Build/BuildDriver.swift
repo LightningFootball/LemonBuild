@@ -107,12 +107,7 @@ struct BuildDriver {
         case .git(let url, let ref):
             try Download.ensureGit(url: url, ref: ref, destination: dest)
         case .tarball(let url, let sha256):
-            _ = (url, sha256)
-            throw NSError(
-                domain: "LemonBuild.BuildDriver",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "tarball source not yet implemented"]
-            )
+            try Download.ensureTarball(url: url, sha256: sha256, destination: dest)
         }
     }
 }
