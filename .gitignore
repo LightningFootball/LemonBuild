@@ -3,9 +3,9 @@ CLAUDE.md
 .claude/
 .build/
 .swiftpm/
-build/
-dist/
-work/
+/build/
+/dist/
+/work/
 *.xcframework
 Frameworks/*.xcframework
 *.xcodeproj/xcuserdata/
