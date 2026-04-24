@@ -7,10 +7,10 @@ struct LibrarySpec {
     let source: Source
     let buildSystem: BuildSystemKind
     let dependencies: [String]
-    /// Path of the produced static library relative to the install prefix, e.g. `lib/libdav1d.a`.
-    let productLibraryRelativePath: String
-    /// Path of the headers dir relative to the install prefix, e.g. `include/dav1d`.
-    let headersRelativePath: String
+    /// Filename of the produced xcframework (without extension). Usually PascalCase.
+    let xcframeworkName: String
+    /// Clang module name written into the xcframework's `module.modulemap`.
+    let moduleName: String
 
     enum Source {
         case git(url: String, ref: String)
@@ -25,12 +25,31 @@ struct LibrarySpec {
     }
 }
 
-/// All libraries the CLI knows about. v0.1.0 stage 1 starts empty;
-/// each later stage appends its library specs.
-enum LibraryRegistry {
-    static let libraries: [LibrarySpec] = []
+/// Result of installing a single slice. The build driver picks these up and
+/// feeds them to the xcframework assembler.
+struct InstallArtifact {
+    /// Absolute path to the produced static library (e.g. `.../lib/libdav1d.a`).
+    let staticLibrary: URL
+    /// Directory that becomes the slice's `Headers/` (must contain a `module.modulemap`).
+    let headersRoot: URL
+}
 
-    static func find(_ name: String) -> LibrarySpec? {
-        libraries.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+/// Each library supplies one of these to drive its own per-slice install.
+protocol LibraryBuilder {
+    var spec: LibrarySpec { get }
+    /// Install the library for one slice and return the artifact paths.
+    func buildSlice(toolchain: Toolchain, sourceDir: URL, workspace: URL) throws -> InstallArtifact
+}
+
+/// Central registry of everything the CLI knows how to build.
+enum LibraryRegistry {
+    static let builders: [any LibraryBuilder] = [
+        Dav1dBuilder()
+    ]
+
+    static var libraries: [LibrarySpec] { builders.map(\.spec) }
+
+    static func find(_ name: String) -> (any LibraryBuilder)? {
+        builders.first { $0.spec.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 }

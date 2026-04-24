@@ -14,11 +14,26 @@ enum CLI {
             return 0
         }
 
-        // Stage 1: no libraries registered — nothing to dispatch.
-        let unknown = args.joined(separator: " ")
-        FileHandle.standardError.write(Data("error: unknown library or flag: \(unknown)\n".utf8))
-        FileHandle.standardError.write(Data("hint: run `build --list` to see available libraries.\n".utf8))
-        return 1
+        // Treat remaining tokens as library names.
+        let repoRoot = BuildDriver.locateRepoRoot()
+        let driver = BuildDriver(repoRoot: repoRoot)
+        for name in args {
+            guard let builder = LibraryRegistry.find(name) else {
+                FileHandle.standardError.write(Data("error: unknown library: \(name)\n".utf8))
+                FileHandle.standardError.write(Data("hint: run `build --list` to see available libraries.\n".utf8))
+                return 1
+            }
+            let spec = builder.spec
+            print(">> Building \(spec.name) \(spec.version) (\(spec.buildSystem.rawValue))")
+            do {
+                let out = try driver.build(library: builder, platforms: Platform.allCases)
+                print("<< \(spec.name) → \(out.path)")
+            } catch {
+                FileHandle.standardError.write(Data("error: \(spec.name) build failed\n\(error)\n".utf8))
+                return 1
+            }
+        }
+        return 0
     }
 
     static func printHelp() {
@@ -34,8 +49,8 @@ enum CLI {
             --list    List all registered libraries with their build systems.
             --help    Show this help message.
 
-        Stage 1 of the LemonBuild roadmap ships infrastructure only — no libraries
-        are registered yet. See docs/lemonbuild-roadmap.md in the Lemon repository.
+        Runs each listed library through fetch → configure → compile → install → xcframework
+        assembly for every slice in Platform.allCases. Products land in Frameworks/.
         """
         print(help)
     }
@@ -43,7 +58,7 @@ enum CLI {
     static func printList() {
         let libs = LibraryRegistry.libraries
         if libs.isEmpty {
-            print("No libraries registered. (Stage 1: infrastructure only.)")
+            print("No libraries registered.")
             return
         }
         let nameWidth = max(4, libs.map(\.name.count).max() ?? 4)
