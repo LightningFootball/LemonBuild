@@ -1,0 +1,12 @@
+.DS_Store
+CLAUDE.md
+.claude/
+.build/
+.swiftpm/
+build/
+dist/
+work/
+*.xcframework
+Frameworks/*.xcframework
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
