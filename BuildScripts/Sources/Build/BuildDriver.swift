@@ -118,7 +118,10 @@ struct BuildDriver {
         return out
     }
 
-    private func transitiveDependencies(of spec: LibrarySpec) -> [String] {
+    /// DFS through `LibraryRegistry` from `spec.dependencies`, returning the
+    /// closure of dep names in topological order (deepest first). Visible to
+    /// tests so callers can audit the closure without spinning up a full build.
+    func transitiveDependencies(of spec: LibrarySpec) -> [String] {
         var seen = Set<String>()
         var result: [String] = []
         func visit(_ name: String) {
