@@ -38,7 +38,7 @@ PRODUCTS = %w[
 #     Metal / QuartzCore / IOSurface — VideoToolbox decode + MoltenVK render
 #   * Foundation / CoreFoundation / Security / CoreGraphics — pulled by
 #     various MoltenVK / FFmpeg paths
-SYSTEM_LIBRARIES = %w[libiconv.tbd libc++.tbd]
+SYSTEM_LIBRARIES = %w[libiconv.tbd libc++.tbd libz.tbd]
 SYSTEM_FRAMEWORKS = %w[
   AudioToolbox AVFoundation CoreMedia CoreVideo VideoToolbox
   Metal QuartzCore IOSurface

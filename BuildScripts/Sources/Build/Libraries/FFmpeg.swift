@@ -85,6 +85,12 @@ struct FFmpegBuilder: LibraryBuilder {
         args.append("--disable-gpl")
         args.append("--disable-nonfree")
 
+        // iOS sysroot has libz but not libbz2; FFmpeg's auto-detect picks up
+        // brew's bzip2 from /opt/homebrew without our consent and
+        // matroskadec.c ends up referencing BZ2_bzDecompress*. Explicitly
+        // disable so the bzip2 codepath isn't compiled in.
+        args.append("--disable-bzlib")
+
         // Player-side: we demux / decode, not encode / mux.
         args.append("--disable-encoders")
         args.append("--disable-muxers")
