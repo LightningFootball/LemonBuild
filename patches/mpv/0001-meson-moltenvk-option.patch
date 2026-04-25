@@ -1,0 +1,43 @@
+From: LemonBuild <noreply@lemonbuild.local>
+Subject: [PATCH 1/3] meson: add moltenvk feature option + context_moltenvk.m source wiring
+
+Adds a `moltenvk` feature option and routes `video/out/vulkan/context_moltenvk.m`
+into the build whenever `vulkan` is available and `moltenvk` isn't explicitly
+disabled. Targeted at iOS, where MoltenVK is the only path from Vulkan to Metal
+and the Cocoa/Swift context_mac.m doesn't apply.
+
+---
+ meson.build    | 9 +++++++++
+ meson.options  | 1 +
+ 2 files changed, 10 insertions(+)
+
+diff --git a/meson.build b/meson.build
+--- a/meson.build
++++ b/meson.build
+@@ -1640,6 +1640,15 @@ if features['cocoa'] and features['vulkan'] and features['swift']
+     sources += files('video/out/vulkan/context_mac.m')
+ endif
+
++moltenvk = get_option('moltenvk').require(
++    features['vulkan'],
++    error_message: 'moltenvk context requires vulkan support',
++)
++features += {'moltenvk': moltenvk.allowed()}
++if features['moltenvk']
++    sources += files('video/out/vulkan/context_moltenvk.m')
++endif
++
+ macos_media_player = get_option('macos-media-player').require(
+     features['swift'],
+     error_message: 'Swift was not found!',
+diff --git a/meson.options b/meson.options
+--- a/meson.options
++++ b/meson.options
+@@ -112,6 +112,7 @@ option('macos-cocoa-cb', type: 'feature', value: 'auto', description: 'macOS lib
+ option('macos-media-player', type: 'feature', value: 'auto', description: 'macOS Media Player support')
+ option('macos-touchbar', type: 'feature', value: 'auto', description: 'macOS Touch Bar support')
+ option('macos-bundle-category', type : 'combo', choices : ['video', 'games'], value : 'video', description: 'macOS bundle category')
++option('moltenvk', type: 'feature', value: 'auto', description: 'MoltenVK (Vulkan via Metal) GPU context for iOS/macOS')
+ option('swift-build', type: 'feature', value: 'auto', description: 'macOS Swift build tools')
+ option('swift-flags', type: 'string', description: 'Optional Swift compiler flags')
+

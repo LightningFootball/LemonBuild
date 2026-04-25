@@ -1,0 +1,32 @@
+From: LemonBuild <noreply@lemonbuild.local>
+Subject: [PATCH 2/3] video/out/gpu: register ra_ctx_vulkan_moltenvk
+
+Announces the new MoltenVK GPU context to mpv's `contexts[]` probe list so
+`--gpu-context=moltenvk` resolves to the new backend.
+
+---
+ video/out/gpu/context.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/video/out/gpu/context.c b/video/out/gpu/context.c
+--- a/video/out/gpu/context.c
++++ b/video/out/gpu/context.c
+@@ -50,6 +50,7 @@ extern const struct ra_ctx_fns ra_ctx_vulkan_xlib;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_android;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_display;
+ extern const struct ra_ctx_fns ra_ctx_vulkan_mac;
++extern const struct ra_ctx_fns ra_ctx_vulkan_moltenvk;
+
+ /* Direct3D 11 */
+ extern const struct ra_ctx_fns ra_ctx_d3d11;
+@@ -96,6 +97,10 @@ static const struct ra_ctx_fns *const contexts[] = {
+ #if HAVE_COCOA && HAVE_SWIFT
+     &ra_ctx_vulkan_mac,
+ #endif
++
++#if HAVE_MOLTENVK
++    &ra_ctx_vulkan_moltenvk,
++#endif
+ #endif
+
+ // OpenGL contexts:

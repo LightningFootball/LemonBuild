@@ -53,12 +53,37 @@ enum Shell {
         let errPipe = Pipe()
         process.standardOutput = outPipe
         process.standardError = errPipe
+
+        // Drain both pipes concurrently. If we don't, a child that writes more
+        // than ~16KB to stderr while we're synchronously draining stdout will
+        // block on its stderr write — stdout EOF never comes — and the whole
+        // pipeline deadlocks. FFmpeg's `make -j10` with 10 clang children each
+        // emitting `-MMD` dependency notes hits that limit within seconds.
+        let outQueue = DispatchQueue(label: "lemonbuild.shell.out")
+        let errQueue = DispatchQueue(label: "lemonbuild.shell.err")
+        var outChunks = Data()
+        var errChunks = Data()
+        let outGroup = DispatchGroup()
+        let errGroup = DispatchGroup()
+
+        outGroup.enter()
+        outQueue.async {
+            outChunks = outPipe.fileHandleForReading.readDataToEndOfFile()
+            outGroup.leave()
+        }
+        errGroup.enter()
+        errQueue.async {
+            errChunks = errPipe.fileHandleForReading.readDataToEndOfFile()
+            errGroup.leave()
+        }
+
         try process.run()
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        let stdout = String(data: outData, encoding: .utf8) ?? ""
-        let stderr = String(data: errData, encoding: .utf8) ?? ""
+        outGroup.wait()
+        errGroup.wait()
+
+        let stdout = String(data: outChunks, encoding: .utf8) ?? ""
+        let stderr = String(data: errChunks, encoding: .utf8) ?? ""
         if process.terminationStatus != 0 {
             throw Error(
                 command: command,

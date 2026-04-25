@@ -59,6 +59,18 @@ struct BuildDriver {
         let spec = library.spec
         let libWorkspace = workspaceRoot.appendingPathComponent(spec.name)
         let sourceDir = libWorkspace.appendingPathComponent("src")
+        let xcframework = frameworksRoot.appendingPathComponent("\(spec.xcframeworkName).xcframework")
+
+        // Skip if the xcframework is already on disk *and* every per-slice
+        // install dir we'd populate is intact. The install dirs need to be
+        // there so dependents can pkg-config against them; missing one means
+        // a `rm -rf work` happened and we have to rebuild from source.
+        if try isCached(xcframework: xcframework, installDirs: platforms.map {
+            libWorkspace.appendingPathComponent("install/\($0.sliceName)")
+        }) {
+            print("== \(spec.name) \(spec.version) (cached, skipping)")
+            return xcframework
+        }
 
         print(">> \(spec.name) \(spec.version) (\(spec.buildSystem.rawValue))")
         try fetchSource(spec: spec, into: sourceDir)
@@ -69,8 +81,12 @@ struct BuildDriver {
             let buildDir = libWorkspace.appendingPathComponent("build/\(platform.sliceName)")
             let installDir = libWorkspace.appendingPathComponent("install/\(platform.sliceName)")
 
+            // pkg-config needs the *transitive* set of install dirs:
+            // libplacebo.pc has `Requires: shaderc`, so even though libmpv
+            // doesn't list shaderc directly, lookups still fail without it
+            // on PKG_CONFIG_PATH. Expand the closure once per slice.
             var depInstallDirs: [String: URL] = [:]
-            for depName in spec.dependencies {
+            for depName in transitiveDependencies(of: spec) {
                 let depInstall = workspaceRoot
                     .appendingPathComponent(depName)
                     .appendingPathComponent("install/\(platform.sliceName)")
@@ -100,6 +116,35 @@ struct BuildDriver {
         let out = try assembler.assemble()
         print("<< \(spec.name) → \(out.path)")
         return out
+    }
+
+    private func transitiveDependencies(of spec: LibrarySpec) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        func visit(_ name: String) {
+            if seen.contains(name) { return }
+            seen.insert(name)
+            guard let lib = LibraryRegistry.find(name) else { return }
+            for dep in lib.spec.dependencies {
+                visit(dep)
+            }
+            result.append(name)
+        }
+        for dep in spec.dependencies {
+            visit(dep)
+        }
+        return result
+    }
+
+    private func isCached(xcframework: URL, installDirs: [URL]) throws -> Bool {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: xcframework.appendingPathComponent("Info.plist").path) else {
+            return false
+        }
+        for dir in installDirs {
+            guard fm.fileExists(atPath: dir.path) else { return false }
+        }
+        return true
     }
 
     private func fetchSource(spec: LibrarySpec, into dest: URL) throws {

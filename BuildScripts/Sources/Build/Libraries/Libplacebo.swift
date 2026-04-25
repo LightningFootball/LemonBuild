@@ -49,22 +49,13 @@ struct LibplaceboBuilder: LibraryBuilder {
         let staticLib = context.installDir.appendingPathComponent("lib/libplacebo.a")
 
         // libplacebo installs all backend headers (d3d11.h, opengl.h) even
-        // when their meson feature is disabled. Umbrella-dir modules walk
-        // everything, and those headers `#include <windows.h>` / `<GL/gl.h>`
-        // which don't exist on iOS. Drop them from the staged tree.
-        //
-        // utils/dav1d.{h,_internal.h} and utils/libav.{h,_internal.h} are
-        // integration helpers that depend on dav1d / FFmpeg headers being on
-        // the consumer's -I path. Cross-module includes don't resolve through
-        // our wrapped layout; drop them here and let Lemon include them
-        // explicitly later if the integration is ever needed.
+        // when their meson feature is disabled. Drop them from the install
+        // dir altogether — neither mpv nor any other downstream consumer on
+        // iOS will compile against them, and the `#include <windows.h>` /
+        // `<GL/gl.h>` blow up umbrella-dir module compilation later.
         let includeDir = context.installDir.appendingPathComponent("include/libplacebo")
-        let utilsDir = includeDir.appendingPathComponent("utils")
         for h in ["d3d11.h", "opengl.h"] {
             try? FileManager.default.removeItem(at: includeDir.appendingPathComponent(h))
-        }
-        for h in ["dav1d.h", "dav1d_internal.h", "libav.h", "libav_internal.h"] {
-            try? FileManager.default.removeItem(at: utilsDir.appendingPathComponent(h))
         }
 
         let stage = context.installDir.appendingPathComponent("Headers")
@@ -105,6 +96,16 @@ struct LibplaceboBuilder: LibraryBuilder {
             },
             recursive: true
         )
+        // utils/dav1d.{h,_internal.h} and utils/libav.{h,_internal.h} are
+        // FFmpeg / dav1d integration glue. We keep them in the install dir
+        // because libmpv `#includes` them at compile time, but drop them
+        // from the staged xcframework tree: their cross-module references
+        // (`<libavformat/...>`, `<dav1d/...>`) can't be made to resolve
+        // through Lemon's binary-target Clang module compilation.
+        let stagedUtils = moduleContent.appendingPathComponent("utils")
+        for h in ["dav1d.h", "dav1d_internal.h", "libav.h", "libav_internal.h"] {
+            try? FileManager.default.removeItem(at: stagedUtils.appendingPathComponent(h))
+        }
         return InstallArtifact(staticLibrary: staticLib, headersRoot: stage)
     }
 

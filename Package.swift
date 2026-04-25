@@ -21,6 +21,8 @@ let package = Package(
         .library(name: "MoltenVK", targets: ["MoltenVK"]),
         .library(name: "Shaderc", targets: ["Shaderc"]),
         .library(name: "Libplacebo", targets: ["Libplacebo"]),
+        .library(name: "FFmpeg", targets: ["FFmpeg"]),
+        .library(name: "Libmpv", targets: ["Libmpv"]),
     ],
     targets: [
         .target(name: "LemonBuild", path: "Sources/LemonBuild"),
@@ -33,6 +35,8 @@ let package = Package(
         .binaryTarget(name: "MoltenVK", path: "Frameworks/MoltenVK.xcframework"),
         .binaryTarget(name: "Shaderc", path: "Frameworks/Shaderc.xcframework"),
         .binaryTarget(name: "Libplacebo", path: "Frameworks/Libplacebo.xcframework"),
+        .binaryTarget(name: "FFmpeg", path: "Frameworks/FFmpeg.xcframework"),
+        .binaryTarget(name: "Libmpv", path: "Frameworks/Libmpv.xcframework"),
         .testTarget(
             name: "LemonBuildTests",
             dependencies: [
@@ -46,6 +50,8 @@ let package = Package(
                 "MoltenVK",
                 "Shaderc",
                 "Libplacebo",
+                "FFmpeg",
+                "Libmpv",
             ],
             path: "Tests/LemonBuildTests",
             linkerSettings: [
@@ -54,11 +60,24 @@ let package = Package(
                 .linkedLibrary("iconv"),
                 // libc++ for shaderc (C++ runtime) and for libplacebo's C++ bits.
                 .linkedLibrary("c++"),
-                // MoltenVK's Metal/QuartzCore/IOSurface/Foundation dependencies.
+                // FFmpeg's avutil references liblzma and zlib from the system.
+                .linkedLibrary("z"),
+                .linkedLibrary("bz2"),
+                // MoltenVK's Metal / QuartzCore / IOSurface / Foundation,
+                // plus CoreMedia / AVFoundation that FFmpeg's VideoToolbox
+                // decoder path references, and AudioToolbox for libmpv.
                 .linkedFramework("Metal"),
                 .linkedFramework("Foundation"),
                 .linkedFramework("QuartzCore"),
                 .linkedFramework("IOSurface"),
+                .linkedFramework("CoreMedia"),
+                .linkedFramework("CoreVideo"),
+                .linkedFramework("VideoToolbox"),
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("AudioToolbox"),
+                .linkedFramework("CoreFoundation"),
+                .linkedFramework("CoreGraphics"),
+                .linkedFramework("Security"),
             ]
         ),
     ]

@@ -84,7 +84,9 @@ enum LibraryRegistry {
         LibassBuilder(),
         MoltenVKBuilder(),
         ShadercBuilder(),
-        LibplaceboBuilder()
+        LibplaceboBuilder(),
+        FFmpegBuilder(),
+        LibmpvBuilder()
     ]
 
     static var libraries: [LibrarySpec] { builders.map(\.spec) }
